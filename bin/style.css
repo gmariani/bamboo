@@ -1,0 +1,55 @@
+/* CSS file */
+
+Application
+{
+	backgroundAlpha: 0;
+	borderStyle: none;
+	borderThickness: 0;
+	background-color: "";
+	background-image: "";
+	padding: 0px;
+	
+}
+.configWindow
+{
+	backgroundAlpha: .75;
+	backgroundColor: #0000AA;
+	width: 400;
+	visible: false;
+	cornerRadius: 15;
+	borderStyle: solid;
+	borderThickness: 0;
+	paddingTop: 20px;
+	paddingBottom: 10px;
+    paddingLeft: 15px;
+    paddingRight: 15px;
+}
+.topBar
+{
+    backgroundColor: #000000;
+    width: 400;
+    cornerRadius: 15;
+    borderStyle: solid;
+    borderThickness: 0;
+}
+.setupWindow
+{
+    backgroundAlpha: .75;
+    backgroundColor: #0000FF;
+    width: 400;
+	cornerRadius: 15;
+	borderStyle: solid;
+	borderThickness: 0;
+	color: #FFFFFF;
+    paddingTop: 20px;
+    paddingBottom: 10px;
+    paddingLeft: 15px;
+    paddingRight: 15px;
+}
+
+.card
+{
+    backgroundAlpha: 0;
+    borderStyle: none;
+    borderThickness: 0;
+}

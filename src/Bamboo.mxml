@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" 
+    layout="absolute" 
+    horizontalScrollPolicy="off" 
+    verticalScrollPolicy="off" 
+    width="800" 
+    height="600" 
+    creationComplete="init()" >
+    <mx:Script>
+    <![CDATA[
+        import flash.events.ErrorEvent;
+        import flash.errors.IOError;
+        import flash.events.IOErrorEvent;
+        import air.update.ApplicationUpdaterUI;
+        import air.update.events.UpdateEvent;
+        import mx.controls.Alert;
+        import gs.TweenMax;
+        import gs.easing.Expo;
+        import flash.geom.PerspectiveProjection;
+        import flash.geom.Point;     
+        
+        private var side:String = "front";  
+        private var cardRotationFront:Number = 0;
+        private var cardRotationBack:Number = 0; 
+        
+        //RSS Loader
+        import com.adobe.xml.syndication.generic.FeedFactory;
+        import com.adobe.xml.syndication.generic.IFeed;
+        import com.adobe.xml.syndication.generic.IItem;
+        private var _xml:XML;
+        private var xml_url:URLRequest;
+        private var XMLLoader:URLLoader;
+        private var _wdwSpecialOffers:Boolean = false;
+        private var _wdwSpecialEvents:Boolean = false;
+        private var _dlrSpecialOffers:Boolean = false;
+        private var _dlrSpecialEvents:Boolean = false;
+        private var _dclSpecialOffers:Boolean = false;
+        private var _dclSpecialEvents:Boolean = false;
+        private var _dvcSpecialOffers:Boolean = false;
+        private var _dvcSpecialEvents:Boolean = false;
+        
+        
+        
+        // Instantiate the updater
+        private var appUpdater:ApplicationUpdaterUI = new ApplicationUpdaterUI();
+    
+        private function init():void {
+            checkForUpdate();
+            
+            loadXML("http://visualadvance.com/blog/wp-rss.php");
+        }
+        
+        private function loadXML(url:String):void {
+            xml_url = new URLRequest(url);
+            try {
+                XMLLoader = new URLLoader(xml_url);
+                XMLLoader.addEventListener (Event.COMPLETE, XMLLoaded);
+            }
+            catch(error:IOError){
+                trace("ERROR: BAMBOO: loadXML(): "+error);
+            }
+        }
+        
+        private function XMLLoaded (e:Event):void
+        {
+            _xml = XML(XMLLoader.data);
+        }
+
+    
+        private function checkForUpdate():void {
+            // The code below is a hack to work around a bug in the framework so that CMD-Q still works on MacOS
+            // This is a temporary fix until the framework is updated
+            // See http://www.adobe.com/cfusion/webforums/forum/messageview.cfm?forumid=72&catid=670&threadid=1373568
+            NativeApplication.nativeApplication.addEventListener( Event.EXITING, 
+                function(e:Event):void {
+                    var opened:Array = NativeApplication.nativeApplication.openedWindows;
+                    for (var i:int = 0; i < opened.length; i ++) {
+                        opened[i].close();
+                    }
+            }); 
+    
+            setApplicationVersion(); // Find the current version so we can show it below
+            
+            // Configuration stuff - see update framework docs for more details
+            appUpdater.updateURL = "http://www.flashdisney.com/bamboo/update.xml"; // Server-side XML file describing update
+            appUpdater.isCheckForUpdateVisible = false; // We won't ask permission to check for an update
+            appUpdater.addEventListener(UpdateEvent.INITIALIZED, onUpdate); // Once initialized, run onUpdate
+            appUpdater.addEventListener(ErrorEvent.ERROR, onError); // If something goes wrong, run onError
+            appUpdater.initialize(); // Initialize the update framework
+        }
+    
+        private function onError(event:ErrorEvent):void {
+            Alert.show(event.toString());
+        }
+        
+        private function onUpdate(event:UpdateEvent):void {
+            appUpdater.checkNow(); // Go check for an update now
+        }
+    
+        // Find the current version for our Label below
+        private function setApplicationVersion():void {
+            var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
+            var ns:Namespace = appXML.namespace();
+            ver.text = "Bamboo " + appXML.ns::version;
+        }
+        
+        private function checkAutoStart():void {
+            try {
+                trace("NativeApplication.nativeApplication.startAtLogin:"+NativeApplication.nativeApplication.startAtLogin);
+                if(NativeApplication.nativeApplication.startAtLogin) {
+                    autoStart.selected=true;
+                } else {
+                    autoStart.selected=false;
+                }
+            }
+            catch(error:Error){
+                trace("ERROR: BAMBOO: checkAutoStart(): "+error);
+            }
+        }
+        
+        private function changeAutoStart():void {
+            trace("autoStart.selected:"+autoStart.selected);
+            try {
+                if(autoStart.selected) {
+                    NativeApplication.nativeApplication.startAtLogin=true;
+                } else {
+                    NativeApplication.nativeApplication.startAtLogin=false;
+                }
+            }
+            catch(error:Error){
+                trace("ERROR: BAMBOO: changeAutoStart(): "+error);
+            }
+        }
+        
+        private function flip():void {
+            root.transform.perspectiveProjection.projectionCenter = new Point(card.x, card.y);
+            root.transform.perspectiveProjection.fieldOfView = 45;
+            switch(side){
+                case "front":
+                side = "back";
+                //configWindow.visible = true;
+                //setupWindow.visible = false;
+                TweenMax.to(card, 1, {rotationY:180,rotation:cardRotationBack,onUpdate:setSideVisibility,ease:Expo.easeOut,dropShadowFilter:{blurX:5, blurY:5, alpha:0.5, distance:10}});
+                break;
+                case "back":
+                side = "front";
+                //setupWindow.visible = true;
+                //configWindow.visible = false;
+                TweenMax.to(card, 1, {rotationY:0,rotation:cardRotationFront,onUpdate:setSideVisibility,ease:Expo.easeOut,dropShadowFilter:{blurX:5, blurY:5, alpha:0.5, distance:10}});
+                break;
+            }
+        }
+        
+        private function setSideVisibility():void{
+            if(card.rotationY >= 90){
+                configWindow.visible = true;
+                setupWindow.visible = false;
+                topBar.rotationY = 180;
+                topBar.width = configWindow.width;
+                topBar.x = configWindow.x;
+                topBar.y = configWindow.y;// - topBar.height;
+            }else if(card.rotationY < 90){
+                setupWindow.visible = true;
+                configWindow.visible = false;
+                topBar.rotationY = 0;
+                topBar.width = setupWindow.width;
+                topBar.x = setupWindow.x;
+                topBar.y = setupWindow.y;// - topBar.height;
+            }
+        }
+        
+        private function setupWindowLoaded():void {
+            card.x += (setupWindow.width/2);
+            card.y += (setupWindow.height/2);
+            setupWindow.x = (card.width/2)*-1;
+            setupWindow.y = (card.height/2)*-1;
+            topBar.width = setupWindow.width;
+            topBar.x = setupWindow.x;
+            topBar.y = setupWindow.y;// - topBar.height;
+            topBar.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
+            
+        }
+        
+        private function onMouseDown(evt:MouseEvent):void {
+            stage.nativeWindow.startMove();
+        }
+        private function onClose(evt:MouseEvent):void {
+            TweenMax.to(card, .5, {alpha:0,onComplete:close});
+        }
+        private function close():void {
+            stage.nativeWindow.close();
+        }
+        private function onMinimize(evt:MouseEvent):void {
+            stage.nativeWindow.minimize();
+        }
+        
+        private function configWindowLoaded():void {
+            //card.x = configWindow.width/2;
+            //card.y = configWindow.height/2;
+            configWindow.rotationY=180;
+            configWindow.x = (configWindow.width/2);
+            configWindow.y = (card.height/2)*-1;
+            
+        }
+        
+        private function wdwSpecialOffers():void { _wdwSpecialOffers = (wdwSpecialOffers1.selected) ? true : false; }
+        private function wdwSpecialEvents():void { _wdwSpecialEvents = (wdwSpecialEvents1.selected) ? true : false; }
+        private function dlrSpecialOffers():void { _dlrSpecialOffers = (dlrSpecialOffers1.selected) ? true : false; }
+        private function dlrSpecialEvents():void { _dlrSpecialEvents = (dlrSpecialEvents1.selected) ? true : false; }
+        private function dclSpecialOffers():void { _dclSpecialOffers = (dclSpecialOffers1.selected) ? true : false; }
+        private function dclSpecialEvents():void { _dclSpecialEvents = (dclSpecialEvents1.selected) ? true : false; }
+        private function dvcSpecialOffers():void { _dvcSpecialOffers = (dvcSpecialOffers1.selected) ? true : false; }
+        private function dvcSpecialEvents():void { _dvcSpecialEvents = (dvcSpecialEvents1.selected) ? true : false; }
+    ]]>
+    </mx:Script>
+        <mx:Canvas id="card" x="100" y="100" clipContent="false" styleName="card">    
+            <mx:VBox id="configWindow" width="400" styleName="configWindow" creationComplete="configWindowLoaded()" visible="false">
+                <mx:Box>
+                    <mx:CheckBox id="thing1" label="Thing 1" color="white" />
+                    <mx:CheckBox id="thing2" label="Thing 2" color="white" />
+                    <mx:CheckBox id="thing3" label="Thing 3" color="white" />
+                </mx:Box>
+                
+                <mx:Box>
+                    <mx:Button id="setupButton" label="Setup" click="flip()" />
+                </mx:Box>
+            </mx:VBox>
+            <mx:VBox id="setupWindow" width="400" styleName="setupWindow" creationComplete="setupWindowLoaded()">
+                <mx:VBox width="100%">
+                    <mx:HBox width="100%">
+                        <mx:VBox width="50%">
+                            <mx:Text text="Walt Disney World Resort"  fontWeight="bold"/>
+                            <mx:Text text="Tell me about:" />
+                            <mx:CheckBox id="wdwSpecialOffers1" label="Special Offers" click="wdwSpecialOffers()" />
+                            <mx:CheckBox id="wdwSpecialEvents1" label="Special Events" click="wdwSpecialEvents()" />
+                        </mx:VBox>
+                        <mx:VBox width="50%">
+                            <mx:Text text="Disneyland Resort"  fontWeight="bold"/>
+                            <mx:Text text="Tell me about:" />
+                            <mx:CheckBox id="dlrSpecialOffers1" label="Special Offers" click="dlrSpecialOffers()" />
+                            <mx:CheckBox id="dlrSpecialEvents1" label="Special Events" click="dlrSpecialEvents()" />
+                        </mx:VBox>
+                    </mx:HBox>
+                    <mx:HRule width="100%"/>
+                    <mx:HBox width="100%">
+                        <mx:VBox width="50%">
+                            <mx:Text text="Disney Cruise Line"  fontWeight="bold"/>
+                            <mx:Text text="Tell me about:" />
+                            <mx:CheckBox id="dclSpecialOffers1" label="Special Offers" click="dclSpecialOffers()" />
+                            <mx:CheckBox id="dclSpecialEvents1" label="Special Events" click="dclSpecialEvents()" />
+                        </mx:VBox>
+                        <mx:VBox width="50%">
+                            <mx:Text text="Disney Vacation Club"  fontWeight="bold"/>
+                            <mx:Text text="Tell me about:" />
+                            <mx:CheckBox id="dvcSpecialOffers1" label="Special Offers" click="dvcSpecialOffers()" />
+                            <mx:CheckBox id="dvcSpecialEvents1" label="Special Events" click="dvcSpecialEvents()" />
+                        </mx:VBox>
+                    </mx:HBox>
+                    <mx:HRule width="100%"/>
+                    <mx:Text  text="Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Integer sit amet 
+ante ut lectus facilisis condimentum."  width="100%"/>
+                    <mx:Text text="Zip Code:" fontSize="12" />
+                    <mx:TextInput id="zipCode" color="#000000"/>
+                    <mx:CheckBox id="autoStart" label="Auto Start" color="white" click="changeAutoStart()" creationComplete="checkAutoStart()" />
+                    
+                    <mx:HBox width="100%">
+                        <mx:Spacer width="100%" />
+                        <mx:Button id="doneButton" label="Done" click="flip()"/>
+                    </mx:HBox>
+                </mx:VBox>
+            </mx:VBox>
+            <mx:HBox id="topBar" x="0" y="0" height="18" styleName="topBar" paddingRight="10" paddingTop="1">
+                <mx:Spacer width="100%" />
+                <mx:Text id="ver" color="white" fontWeight="bold" selectable="false"/>
+                <mx:Button id="minimizeBtn" icon="@Embed('assets/minimize_icon.png')" width="16" height="16" verticalCenter="0" click="onMinimize(event)" />
+                <mx:Button id="closeBtn" icon="@Embed('assets/close_icon.png')" width="16" height="16" verticalCenter="0" click="onClose(event)" />
+                
+            </mx:HBox>
+        </mx:Canvas>
+        <mx:Style source="style.css"/>
+
+</mx:Application>
